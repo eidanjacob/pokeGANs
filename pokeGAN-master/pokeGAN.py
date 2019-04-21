@@ -230,7 +230,9 @@ def train():
     sess.run(tf.local_variables_initializer())
     # continue training
     ckpt = tf.train.latest_checkpoint('./model/' + version)
-    saver.restore(sess, ckpt)
+    if(ckpt is not None):
+        saver.restore(sess, ckpt)
+        
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 

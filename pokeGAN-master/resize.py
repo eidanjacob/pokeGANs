@@ -2,7 +2,7 @@
 import os
 import cv2
 
-src = "./data" #pokeRGB_black
+src = "./sugimori" #pokeRGB_black
 dst = "./resizedData" # resized
 if not os.path.exists(dst):
     os.mkdir(dst)
