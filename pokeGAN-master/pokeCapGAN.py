@@ -47,7 +47,6 @@ def process_data():
     # image = image + noise
     # image = tf.transpose(image, perm=[2, 0, 1])
     # print image.get_shape()
-    print("line 50")
     image = tf.cast(image, tf.float32)
     image = image / 255.0
     
@@ -97,7 +96,6 @@ def generator(input, random_dim, is_train, reuse=False):
         conv5 = tf.layers.conv2d_transpose(act4, c64, kernel_size=[5, 5], strides=[2, 2], padding="SAME",
                                            kernel_initializer=tf.truncated_normal_initializer(stddev=0.02),
                                            name='conv5')
-        print("line 100")
         bn5 = tf.contrib.layers.batch_norm(conv5, is_training=is_train, epsilon=1e-5, decay = 0.9,  updates_collections=None, scope='bn5')
         act5 = tf.nn.relu(bn5, name='act5')
         
@@ -135,7 +133,6 @@ class CapsConv(object):
             
             capsules = tf.concat(capsules, axis = 1)
         
-        print("line 137")
         return(capsules)
 
 
@@ -148,10 +145,9 @@ def capsule(input, b_IJ, idx_j):
         W_Ij = tf.tile(W_Ij, [batch_size, 1, 1, 1])
         u_hat = tf.matmul(W_Ij, input, transpose_a = True)
         shape = tf.shape(b_IJ)
-        print("line 150")
         size_splits = [idx_j, 1, shape[2] - idx_j - 1]
         for r_iter in range (3):
-            c_IJ = tf.nn.softmax(b_IJ, dim = 2)
+            c_IJ = tf.nn.softmax(b_IJ, axis = 2)
             b_Il, b_Ij, b_Ir = tf.split(b_IJ, size_splits, axis = 2)
             c_Il, c_Ij, c_Ir = tf.split(c_IJ, size_splits, axis = 2)
             s_j = tf.multiply(c_Ij, u_hat)
@@ -198,7 +194,6 @@ def discriminator(x_image, reuse=False):
     d_w3 = tf.get_variable('d_w3', [16*32, 1024], initializer = tf.truncated_normal_initializer(stddev = 0.02))
     d_b3 = tf.get_variable('d_b3', [1024], initializer = tf.constant_initializer(0))
     d3 = tf.reshape(caps2, [-1, 16*64])
-    print("line 200")
     d3 = tf.matmul(d3, d_w3)
     d3 = d3 + d_b3
     d3 = tf.nn.relu(d3)
@@ -248,7 +243,6 @@ def train():
     t_vars = tf.trainable_variables()
     d_vars = [var for var in t_vars if 'dis' in var.name]
     g_vars = [var for var in t_vars if 'gen' in var.name]
-    print("line 250")
     # test
     print(d_vars)
     trainer_d = tf.train.RMSPropOptimizer(learning_rate=2e-4).minimize(d_loss, var_list=d_vars)
@@ -297,8 +291,7 @@ def train():
                 _, gLoss = sess.run([trainer_g, g_loss],
                                     feed_dict={random_input: train_noise, is_train: True})
 
-            # print 'train:[%d/%d],d_loss:%f,g_loss:%f' % (i, j, dLoss, gLoss)
-        print("line 300")    
+            # print 'train:[%d/%d],d_loss:%f,g_loss:%f' % (i, j, dLoss, gLoss)   
         # save check point every 500 epoch
         if i%500 == 0:
             if not os.path.exists('./model/' + version):
