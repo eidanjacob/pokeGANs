@@ -1463,3 +1463,4 @@ resized_black/672.jpg filter=lfs diff=lfs merge=lfs -text
 resized_black/753.jpg filter=lfs diff=lfs merge=lfs -text
 resized_black/762.jpg filter=lfs diff=lfs merge=lfs -text
 resized_black/1015.jpg filter=lfs diff=lfs merge=lfs -text
+*.data-00000-of-00001 filter=lfs diff=lfs merge=lfs -text
