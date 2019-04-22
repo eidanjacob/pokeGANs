@@ -23,6 +23,7 @@ def process_data():
     images = []
     for each in os.listdir(pokemon_dir):
         images.append(os.path.join(pokemon_dir,each))
+        
     all_images = tf.convert_to_tensor(images, dtype = tf.string)
     images_queue = tf.train.slice_input_producer(
                                         [all_images])                               
@@ -113,8 +114,8 @@ class CapsConv(object):
             return(capsules)
             
         else:
-            input = tf.reshape(input, shape=(BATCH_SIZE, 26*26*32, 8,1))
-            b_IJ = tf.zeros(shape=[1,26*26*32,32,1], dtype=np.float32)
+            input = tf.reshape(input, shape=(BATCH_SIZE, 9*9*32, 8,1))
+            b_IJ = tf.zeros(shape=[1,9*9*32,32,1], dtype=np.float32)
             capsules = []
             for j in range(self.num_outputs):
                 with tf.variable_scope('caps_' + str(j)):
@@ -140,15 +141,18 @@ def discriminator(input, is_train, reuse=False):
         # After First Convolutional Layer: 60 x 60 x 128
         conv1 = tf.layers.conv2d(input, 128, kernel_size = [9, 9], strides = [2, 2], padding = 'VALID', 
                                 kernel_initializer = tf.truncated_normal_initializer(stddev=0.02), name = 'conv1')
+        # Next Convolutional Layer: 26 x 26 x 256
+        conv2 = tf.layers.conv2d(input, 256, kernel_size = [9, 9], strides = [2, 2], padding = 'VALID',
+                                kernel_initializer = tf.truncated_normal_initializer(stddev=0.02), name = 'conv2')
 
     
-    # First capsule: 8 units per capsule, 26x26 feature map. Number of capsules = 32
+    # First capsule: 8 units per capsule, 9x9 feature map. Number of capsules = 32
     with tf.variable_scope('Primary_Capsule'):
         if reuse:
             scope.reuse_variables()
 
         primaryCaps = CapsConv(num_units = 8, with_routing = False)
-        caps1 = primaryCaps(conv1, num_outputs = 32 * 26, kernel_size = [9, 9], stride = 2, reuse = reuse)
+        caps1 = primaryCaps(conv2, num_outputs = 32 * 9, kernel_size = [9, 9], stride = 2, reuse = reuse)
 
     with tf.variable_scope('Secondary_Capsule'):
         if reuse:
@@ -157,15 +161,19 @@ def discriminator(input, is_train, reuse=False):
         secondaryCaps = CapsConv(num_units = 16, with_routing = True)
         caps2 = secondaryCaps(caps1, num_outputs = 32, reuse = reuse)
 
-    # Fully Connected Layers
-    d_w3 = tf.get_variable('d_w3', [16*32, 1024], initializer=tf.truncated_normal_initializer(stddev=0.02))
-    d_b3 = tf.get_variable('d_b3', [1024], initializer=tf.constant_initializer(0))
-    d3 = tf.reshape(caps2, [-1, 16*32])
-    d3 = tf.matmul(d3, d_w3) + d_b3
-    d3 = tf.nn.relu(d3)
-    d_w4 = tf.get_variable('d_w4', [1024, 1], initializer=tf.truncated_normal_initializer(stddev=0.02))
-    d_b4 = tf.get_variable('d_b4', [1], initializer=tf.constant_initializer(0))
-    d4 = tf.matmul(d3, d_w4) + d_b4
+    with tf.variable_scope('dis') as scope:
+        if reuse:
+            scope.reuse_variables()
+        # Fully Connected Layers
+        d_w3 = tf.get_variable('d_w3', [16*32, 1024], initializer=tf.truncated_normal_initializer(stddev=0.02))
+        d_b3 = tf.get_variable('d_b3', [1024], initializer=tf.constant_initializer(0))
+        d3 = tf.reshape(caps2, [-1, 16*32])
+        d3 = tf.matmul(d3, d_w3) + d_b3
+        d3 = tf.nn.relu(d3)
+        d_w4 = tf.get_variable('d_w4', [1024, 1], initializer=tf.truncated_normal_initializer(stddev=0.02))
+        d_b4 = tf.get_variable('d_b4', [1], initializer=tf.constant_initializer(0))
+        d4 = tf.matmul(d3, d_w4) + d_b4
+        
     return d4
 
 def train():
@@ -179,9 +187,7 @@ def train():
     # wgan
     fake_image = generator(random_input, random_dim, is_train)
     real_result = discriminator(real_image, is_train)
-    print('d on real')
     fake_result = discriminator(fake_image, is_train, reuse=True)
-    print('d on fake')
     d_loss = tf.reduce_mean(fake_result) - tf.reduce_mean(real_result)  # This optimizes the discriminator.
     g_loss = -tf.reduce_mean(fake_result)  # This optimizes the generator.        
     t_vars = tf.trainable_variables()
@@ -245,7 +251,7 @@ def train():
 
 def capsule(input, b_IJ, idx_j):
     with tf.variable_scope('routing'):
-        w_initializer = np.random.normal(size=[1, 26*26*32, 8, 16], scale=0.01)
+        w_initializer = np.random.normal(size=[1, 9*9*32, 8, 16], scale=0.01)
         W_Ij = tf.Variable(w_initializer, dtype=tf.float32)
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
@@ -262,7 +268,7 @@ def capsule(input, b_IJ, idx_j):
             s_j = tf.reduce_sum(tf.multiply(c_Ij, u_hat),
                                 axis=1, keep_dims=True)
             v_j = squash(s_j)
-            v_j_tiled = tf.tile(v_j, [1, 26*26*32, 1, 1])
+            v_j_tiled = tf.tile(v_j, [1, 9*9*32, 1, 1])
             u_produce_v = tf.matmul(u_hat, v_j_tiled, transpose_a=True)
             b_Ij += tf.reduce_sum(u_produce_v, axis=0, keep_dims=True)
             b_IJ = tf.concat([b_Il, b_Ij, b_Ir], axis=2)
