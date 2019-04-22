@@ -39,7 +39,7 @@ def process_data():
     image = image / 255.0
     images_batch = tf.train.shuffle_batch(
                                     [image], batch_size = BATCH_SIZE,
-                                    num_threads = 4, capacity = 200 + 64* BATCH_SIZE,
+                                    num_threads = 4, capacity = 200 + 3* BATCH_SIZE,
                                     min_after_dequeue = 200)
     num_images = len(images)
 
@@ -178,6 +178,8 @@ def discriminator(input, is_train, reuse=False):
 
 def train():
     sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    sess.run(tf.local_variables_initializer())
     random_dim = 100
     with tf.variable_scope('input'):
         real_image = tf.placeholder(tf.float32, shape = [None, HEIGHT, WIDTH, CHANNEL], name='real_image')
@@ -202,8 +204,6 @@ def train():
     batch_num = int(samples_num / batch_size)
     total_batch = 0
     saver = tf.train.Saver()
-    sess.run(tf.global_variables_initializer())
-    sess.run(tf.local_variables_initializer())
     # continue training
     ckpt = tf.train.latest_checkpoint('./model/' + version)
     if(ckpt is not None):
