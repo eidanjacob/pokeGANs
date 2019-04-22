@@ -39,8 +39,8 @@ def process_data():
     image = image / 255.0
     images_batch = tf.train.shuffle_batch(
                                     [image], batch_size = BATCH_SIZE,
-                                    num_threads = 4, capacity = 200 + 3* BATCH_SIZE,
-                                    min_after_dequeue = 200)
+                                    num_threads = 4, capacity = 200 + 3 * BATCH_SIZE,
+                                    min_after_dequeue = 200 + 3 * BATCH_SIZE)
     num_images = len(images)
 
     return images_batch, num_images
