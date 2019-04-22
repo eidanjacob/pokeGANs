@@ -108,7 +108,6 @@ def generator(input, random_dim, is_train, reuse=False):
         conv6 = tf.layers.conv2d_transpose(act5, output_dim, kernel_size=[5, 5], strides=[2, 2], padding="SAME",
                                            kernel_initializer=tf.truncated_normal_initializer(stddev=0.02),
                                            name='conv6')
-        # bn6 = tf.contrib.layers.batch_norm(conv6, is_training=is_train, epsilon=1e-5, decay = 0.9,  updates_collections=None, scope='bn6')
         act6 = tf.nn.tanh(conv6, name='act6')
         return act6
 
