@@ -186,9 +186,9 @@ def discriminator(x_image, reuse=False):
         primaryCaps = CapsConv(num_units = 8, with_routing = False)
         caps1 = primaryCaps(d1, num_outputs=32, kernel_size = 9, stride = 2)
 
-    # with tf.variable_scope('cap2'):
-    #     secondaryCaps = CapsConv(num_units = 16, with_routing = True)
-    #     caps2 = secondaryCaps(caps1, num_outputs = 32, stride = 1)
+    with tf.variable_scope('cap2'):
+        secondaryCaps = CapsConv(num_units = 16, with_routing = True)
+        caps2 = secondaryCaps(caps1, num_outputs = 32, stride = 1)
 
     # Fully Connected Layers
     d_w3 = tf.get_variable('d_w3', [8*32, 1024], initializer = tf.truncated_normal_initializer(stddev = 0.02))
