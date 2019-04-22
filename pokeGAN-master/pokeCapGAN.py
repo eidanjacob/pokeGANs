@@ -198,7 +198,7 @@ def discriminator(x_image, reuse=False):
     d3 = d3 + d_b3
     d3 = tf.nn.relu(d3)
 
-    d_w4 = tf.get_variable('d_w4', [1024, 1], initializer = tf.truncated_normal_initializer(stddev=0.02))
+    d_w4 = tf.get_variable('d_w4', [256, 1], initializer = tf.truncated_normal_initializer(stddev=0.02))
     d_b4 = tf.get_variable('d_b4', [1], initializer = tf.constant_initializer(0))
     d4 = tf.matmul(d3, d_w4) + d_b4
     return d4
