@@ -114,8 +114,8 @@ class CapsConv(object):
             return(capsules)
             
         else:
-            input = tf.reshape(input, shape=(BATCH_SIZE, 9*9*32, 8,1))
-            b_IJ = tf.zeros(shape=[1,9*9*32,32,1], dtype=np.float32)
+            input = tf.reshape(input, shape=(BATCH_SIZE, -1, 8,1))
+            b_IJ = tf.zeros(shape=[1,24336,32,1], dtype=np.float32)
             capsules = []
             for j in range(self.num_outputs):
                 with tf.variable_scope('caps_' + str(j)):
@@ -178,8 +178,6 @@ def discriminator(input, is_train, reuse=False):
 
 def train():
     sess = tf.Session()
-    sess.run(tf.global_variables_initializer())
-    sess.run(tf.local_variables_initializer())
     random_dim = 100
     with tf.variable_scope('input'):
         real_image = tf.placeholder(tf.float32, shape = [None, HEIGHT, WIDTH, CHANNEL], name='real_image')
@@ -200,6 +198,8 @@ def train():
     # clip discriminator weights
     d_clip = [v.assign(tf.clip_by_value(v, -0.01, 0.01)) for v in d_vars]
     batch_size = BATCH_SIZE
+    sess.run(tf.global_variables_initializer())
+    sess.run(tf.local_variables_initializer())
     image_batch, samples_num = process_data()
     batch_num = int(samples_num / batch_size)
     total_batch = 0
@@ -251,7 +251,7 @@ def train():
 
 def capsule(input, b_IJ, idx_j):
     with tf.variable_scope('routing'):
-        w_initializer = np.random.normal(size=[1, 9*9*32, 8, 16], scale=0.01)
+        w_initializer = np.random.normal(size=[1, 24336, 8, 16], scale=0.01)
         W_Ij = tf.Variable(w_initializer, dtype=tf.float32)
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
@@ -268,7 +268,7 @@ def capsule(input, b_IJ, idx_j):
             s_j = tf.reduce_sum(tf.multiply(c_Ij, u_hat),
                                 axis=1, keep_dims=True)
             v_j = squash(s_j)
-            v_j_tiled = tf.tile(v_j, [1, 9*9*32, 1, 1])
+            v_j_tiled = tf.tile(v_j, [1, 24336, 1, 1])
             u_produce_v = tf.matmul(u_hat, v_j_tiled, transpose_a=True)
             b_Ij += tf.reduce_sum(u_produce_v, axis=0, keep_dims=True)
             b_IJ = tf.concat([b_Il, b_Ij, b_Ir], axis=2)
