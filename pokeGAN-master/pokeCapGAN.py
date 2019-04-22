@@ -97,11 +97,14 @@ class CapsConv(object):
         self.num_units = num_units
         self.with_routing = with_routing
 
-    def __call__(self, input, num_outputs, kernel_size=None, stride=None):
+    def __call__(self, input, num_outputs, kernel_size=None, stride=None, reuse=False):
         self.num_outputs = num_outputs
         self.kernel_size = kernel_size
         self.stride = stride
         if not self.with_routing:
+            if reuse:
+                tf.get_variable_scope().reuse_variables()
+
             capsules = tf.contrib.layers.conv2d(input, self.num_outputs,
                                                 self.kernel_size, self.stride, padding="VALID",
                                                 activation_fn=tf.nn.relu)
@@ -141,12 +144,18 @@ def discriminator(input, is_train, reuse=False):
     
     # First capsule: 8 units per capsule, 26x26 feature map. Number of capsules = 32
     with tf.variable_scope('Primary_Capsule'):
+        if reuse:
+            scope.reuse_variables()
+
         primaryCaps = CapsConv(num_units = 8, with_routing = False)
-        caps1 = primaryCaps(conv1, num_outputs = 32 * 26, kernel_size = [9, 9], stride = 2)
+        caps1 = primaryCaps(conv1, num_outputs = 32 * 26, kernel_size = [9, 9], stride = 2, reuse = reuse)
 
     with tf.variable_scope('Secondary_Capsule'):
+        if reuse:
+            scope.reuse_variables()
+
         secondaryCaps = CapsConv(num_units = 16, with_routing = True)
-        caps2 = secondaryCaps(caps1, num_outputs = 32)
+        caps2 = secondaryCaps(caps1, num_outputs = 32, reuse = reuse)
 
     # Fully Connected Layers
     d_w3 = tf.get_variable('d_w3', [16*32, 1024], initializer=tf.truncated_normal_initializer(stddev=0.02))
@@ -162,19 +171,13 @@ def discriminator(input, is_train, reuse=False):
 def train():
     sess = tf.Session()
     random_dim = 100
-    print('hi')
     with tf.variable_scope('input'):
         real_image = tf.placeholder(tf.float32, shape = [None, HEIGHT, WIDTH, CHANNEL], name='real_image')
-        print('real placeholder')
         random_input = tf.placeholder(tf.float32, shape=[None, random_dim], name='rand_input')
-        print('rand placeholder')
         is_train = tf.placeholder(tf.bool, name='is_train')
-        print('bool placeholder')
     
     # wgan
-    print('about to do fake')
     fake_image = generator(random_input, random_dim, is_train)
-    print('fake')
     real_result = discriminator(real_image, is_train)
     print('d on real')
     fake_result = discriminator(fake_image, is_train, reuse=True)
@@ -182,7 +185,6 @@ def train():
     d_loss = tf.reduce_mean(fake_result) - tf.reduce_mean(real_result)  # This optimizes the discriminator.
     g_loss = -tf.reduce_mean(fake_result)  # This optimizes the generator.        
     t_vars = tf.trainable_variables()
-    print('hi2')
     d_vars = [var for var in t_vars if 'dis' in var.name]
     g_vars = [var for var in t_vars if 'gen' in var.name]
     trainer_d = tf.train.RMSPropOptimizer(learning_rate=2e-4).minimize(d_loss, var_list=d_vars)
@@ -193,7 +195,6 @@ def train():
     image_batch, samples_num = process_data()
     batch_num = int(samples_num / batch_size)
     total_batch = 0
-    print('hi3')
     saver = tf.train.Saver()
     sess.run(tf.global_variables_initializer())
     sess.run(tf.local_variables_initializer())
