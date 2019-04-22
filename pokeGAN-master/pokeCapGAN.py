@@ -47,6 +47,7 @@ def process_data():
     # image = image + noise
     # image = tf.transpose(image, perm=[2, 0, 1])
     # print image.get_shape()
+    print("line 50")
     image = tf.cast(image, tf.float32)
     image = image / 255.0
     
@@ -96,6 +97,7 @@ def generator(input, random_dim, is_train, reuse=False):
         conv5 = tf.layers.conv2d_transpose(act4, c64, kernel_size=[5, 5], strides=[2, 2], padding="SAME",
                                            kernel_initializer=tf.truncated_normal_initializer(stddev=0.02),
                                            name='conv5')
+        print("line 100")
         bn5 = tf.contrib.layers.batch_norm(conv5, is_training=is_train, epsilon=1e-5, decay = 0.9,  updates_collections=None, scope='bn5')
         act5 = tf.nn.relu(bn5, name='act5')
         
@@ -133,6 +135,7 @@ class CapsConv(object):
             
             capsules = tf.concat(capsules, axis = 1)
         
+        print("line 137")
         return(capsules)
 
 
@@ -145,9 +148,10 @@ def capsule(input, b_IJ, idx_j):
         W_Ij = tf.tile(W_Ij, [batch_size, 1, 1, 1])
         u_hat = tf.matmul(W_Ij, input, transpose_a = True)
         shape = tf.shape(b_IJ)
+        print("line 150")
         size_splits = [idx_j, 1, shape[2] - idx_j - 1]
         for r_iter in range (3):
-            c_IJ = tf.nn.softmax(b_IJ, axis = 2)
+            c_IJ = tf.nn.softmax(b_IJ, dim = 2)
             b_Il, b_Ij, b_Ir = tf.split(b_IJ, size_splits, axis = 2)
             c_Il, c_Ij, c_Ir = tf.split(c_IJ, size_splits, axis = 2)
             s_j = tf.multiply(c_Ij, u_hat)
@@ -184,7 +188,7 @@ def discriminator(x_image, reuse=False):
     # Capsule Layer
     with tf.variable_scope('cap1'):
         primaryCaps = CapsConv(num_units = 8, with_routing = False)
-        caps1 = primaryCaps(d1, num_outputs=256, kernel_size = 9, stride = 2)
+        caps1 = primaryCaps(d1, num_outputs=32, kernel_size = 9, stride = 2)
 
     with tf.variable_scope('cap2'):
         secondaryCaps = CapsConv(num_units = 16, with_routing = True)
@@ -219,30 +223,10 @@ def train():
     
     d_loss = tf.reduce_mean(fake_result) - tf.reduce_mean(real_result)  # This optimizes the discriminator.
     g_loss = -tf.reduce_mean(fake_result)  # This optimizes the generator.
-    
-    # # dcgan loss
-    # fake_image = generator(random_input, random_dim, is_train)
-    # # sample_fake = generator(random_input, random_dim, is_train, reuse = True)
-    # real_logits, real_result = discriminator(real_image, is_train)
-    # fake_logits, fake_result = discriminator(fake_image, is_train, reuse=True)
-    
-    # d_loss1 = tf.reduce_mean(
-            # tf.nn.sigmoid_cross_entropy_with_logits(
-            # logits = real_logits, labels = tf.ones_like(real_logits)))
-    # d_loss2 = tf.reduce_mean(
-            # tf.nn.sigmoid_cross_entropy_with_logits(
-            # logits = fake_logits, labels = tf.zeros_like(fake_logits)))
-    
-    # d_loss = d_loss1 + d_loss2
-    
-    # g_loss = tf.reduce_mean(
-            # tf.nn.sigmoid_cross_entropy_with_logits(
-            # logits = fake_logits, labels = tf.ones_like(fake_logits)))
-            
-
     t_vars = tf.trainable_variables()
     d_vars = [var for var in t_vars if 'dis' in var.name]
     g_vars = [var for var in t_vars if 'gen' in var.name]
+    print("line 250")
     # test
     print(d_vars)
     trainer_d = tf.train.RMSPropOptimizer(learning_rate=2e-4).minimize(d_loss, var_list=d_vars)
@@ -291,7 +275,8 @@ def train():
                 _, gLoss = sess.run([trainer_g, g_loss],
                                     feed_dict={random_input: train_noise, is_train: True})
 
-            # print 'train:[%d/%d],d_loss:%f,g_loss:%f' % (i, j, dLoss, gLoss)   
+            # print 'train:[%d/%d],d_loss:%f,g_loss:%f' % (i, j, dLoss, gLoss)
+        print("line 300")    
         # save check point every 500 epoch
         if i%500 == 0:
             if not os.path.exists('./model/' + version):
