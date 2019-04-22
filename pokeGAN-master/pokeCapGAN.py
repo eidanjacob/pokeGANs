@@ -17,7 +17,11 @@ newPoke_path = './' + version
 def lrelu(x, n, leak=0.2): 
     return tf.maximum(x, leak * x, name=n) 
  
-def process_data():   
+def process_data():
+    sess = tf.Session()
+    sess.run(tf.global_variables_initializer())
+    sess.run(tf.local_variables_initializer())
+    
     current_dir = os.getcwd()
     pokemon_dir = os.path.join(current_dir, 'resized_black')
     images = []
