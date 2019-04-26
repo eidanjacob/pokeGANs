@@ -57,7 +57,7 @@ def process_data():
     print('8')
     init_op = images_iter.initializer
     print('10')
-    return next_batch, len(image), init_op
+    return next_batch, len(images), init_op
 
 def generator(input, random_dim, is_train, reuse=False):
     c4, c8, c16, c32, c64 = 512, 256, 128, 64, 32 # channel num
