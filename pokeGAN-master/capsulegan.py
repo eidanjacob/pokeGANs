@@ -105,13 +105,13 @@ def discriminator(input, is_train, reuse=False):
         # Convolution: knumber ksize x ksize features
         c1knumber = 256
         c1ksize = 9
-        conv1 = tf.layers.conv2d(input, c1knumber, kernel_size = [c1ksize, c1ksize, 3], stride = 2, reuse = reuse, padding = 'VALID', activation_fn = lrelu, name = 'conv1')
+        conv1 = tf.layers.conv2d(input, c1knumber, kernel_size = [c1ksize, c1ksize, 3], strides = [2,2], reuse = reuse, padding = 'VALID', activation_fn = lrelu, name = 'conv1')
 
         # Primary Capsule Layer
         caps1number = 32
         caps1dim = 8
         caps1size = 9
-        caps1 = tf.layers.conv2d(conv1, caps1number*caps1dim, kernel_size = [caps1size, caps1size, 256], stride = 2, reuse = reuse, padding = 'VALID', activation_fn = lrelu, name = 'caps1')
+        caps1 = tf.layers.conv2d(conv1, caps1number*caps1dim, kernel_size = [caps1size, caps1size, 256], strides = [2,2], reuse = reuse, padding = 'VALID', activation_fn = lrelu, name = 'caps1')
         caps1 = tf.reshape(caps1, shape = [BATCH_SIZE, 25*25*caps1number, 8, 1])
         caps1 = squash(caps1)
 
@@ -151,7 +151,7 @@ def capsule(input, b_IJ, idx_j):
             s_j = tf.multiply(c_Ij, u_hat)
             s_j = tf.reduce_sum(tf.multiply(c_Ij, u_hat), axis=1, keepdims=True)
             v_j = squash(s_j)
-            v_j_tiled = tf.tile(v_j, [1, 25*25*BATCH_SISZE, 1, 1])
+            v_j_tiled = tf.tile(v_j, [1, 25*25*BATCH_SIZE, 1, 1])
             u_produce_v = tf.matmul(u_hat, v_j_tiled, transpose_a=True)
             b_Ij += tf.reduce_sum(u_produce_v, axis=0, keep_dims=True)
             b_IJ = tf.concat([b_Il, b_Ij, b_Ir], axis=2)
