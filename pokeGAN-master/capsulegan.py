@@ -52,8 +52,9 @@ def process_data():
     images_dataset = images_dataset.batch(BATCH_SIZE, drop_remainder = True)
     print('6')
     images_iter = images_dataset.make_one_shot_iterator()
+    next_batch = images_iter.get_next()
     print('7')
-    return images_dataset, len(image)
+    return next_batch, len(image)
 
 def generator(input, random_dim, is_train, reuse=False):
     c4, c8, c16, c32, c64 = 512, 256, 128, 64, 32 # channel num
