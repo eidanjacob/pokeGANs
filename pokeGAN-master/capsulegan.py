@@ -5,12 +5,13 @@ import cv2
 import random
 from utils import *
 
-HEIGHT, WIDTH, CHANNEL, BATCH_SIZE, EPOCH = 128, 128, 3, 64, 5000
+HEIGHT, WIDTH, CHANNEL, BATCH_SIZE, EPOCH = 128, 128, 3, 32, 5000
 version = 'capsulePokemon'
 newPoke_path = "./" + version
 config = tf.ConfigProto(device_count = {'GPU':0, 'CPU':8})
 config.intra_op_parallelism_threads = 8
 config.inter_op_parallelism_threads = 8
+sess = tf.Session(config = config)
 
 def lrelu(x, leak = 0.2):
     return tf.maximum(x, leak*x)
@@ -111,13 +112,14 @@ def discriminator(input, is_train, reuse=False):
         caps1number = 32
         caps1dim = 8
         caps1size = 9
+        # print(conv1.shape)
         caps1 = tf.layers.conv2d(conv1, caps1number*caps1dim, kernel_size = [caps1size, caps1size], strides = [2,2], reuse = reuse, padding = 'VALID', activation = lrelu, name = 'caps1')
-        caps1 = tf.reshape(caps1, shape = [BATCH_SIZE, 25*25*caps1number, 8, 1])
+        caps1 = tf.reshape(caps1, shape = [BATCH_SIZE, 26*26*caps1number, 8, 1])
         caps1 = squash(caps1)
 
         # Dynamic Routing into Secondary Capsule Layer
         caps2number = 32
-        b_IJ = tf.zeros(shape = [1, 25*25*caps1number, caps2number, 1], dtype = tf.float32)
+        b_IJ = tf.zeros(shape = [1, 26*26*caps1number, caps2number, 1], dtype = tf.float32)
         capsules = []
         for j in range(caps2number):
             with tf.variable_scope('capsule' + str(j)):
@@ -129,17 +131,18 @@ def discriminator(input, is_train, reuse=False):
 
         # Fully Connected Layers Follow
         caps2 = tf.reshape(caps2, [-1, 16*32])
-        conv2 = tf.layers.dense(inputs = caps2, units = 200, activation = lrelu, kernel_initializer = tf.initializers.truncated_normal_initializer, reuse=reuse, name = 'conv2')
-        conv3 = tf.layers.dense(inputs = conv2, units = 100, activation = lrelu, kernel_initializer = tf.initializers.truncated_normal_initializer, reuse=reuse, name = 'conv3')
-        conv4 = tf.layers.dense(inputs = conv3, units = 10, activation = lrelu, kernel_initializer = tf.initializers.truncated_normal_initializer, reuse=reuse, name = 'conv4')
-        logits = tf.layers.dense(inputs = conv4, units = 1, activation = lrelu, kernel_initializer = tf.initializers.truncated_normal_initializer, reuse=reuse, name = 'logit')
+        conv2 = tf.layers.dense(inputs = caps2, units = 200, activation = lrelu, kernel_initializer = tf.initializers.truncated_normal, reuse=reuse, name = 'conv2')
+        conv3 = tf.layers.dense(inputs = conv2, units = 100, activation = lrelu, kernel_initializer = tf.initializers.truncated_normal, reuse=reuse, name = 'conv3')
+        conv4 = tf.layers.dense(inputs = conv3, units = 10, activation = lrelu, kernel_initializer = tf.initializers.truncated_normal, reuse=reuse, name = 'conv4')
+        logits = tf.layers.dense(inputs = conv4, units = 1, activation = lrelu, kernel_initializer = tf.initializers.truncated_normal, reuse=reuse, name = 'logit')
         return logits
 
 def capsule(input, b_IJ, idx_j):
     with tf.variable_scope('routing'):
-        w_initializer = np.random.normal([1, 25*25*BATCH_SIZE, 8, 16], scale = 0.01)
+        w_initializer = np.random.normal(size = (1, 26*26*BATCH_SIZE, 8, 16), scale = 0.01)
         w_Ij = tf.Variable(w_initializer, dtype = tf.float32)
         sess.run(w_Ij.initializer)
+        # print(w_Ij.shape, input.shape)
         w_Ij = tf.tile(w_Ij, [BATCH_SIZE, 1, 1, 1])
         u_hat = tf.matmul(w_Ij, input, transpose_a = True)
         shape = b_IJ.get_shape().as_list()
@@ -151,16 +154,14 @@ def capsule(input, b_IJ, idx_j):
             s_j = tf.multiply(c_Ij, u_hat)
             s_j = tf.reduce_sum(tf.multiply(c_Ij, u_hat), axis=1, keepdims=True)
             v_j = squash(s_j)
-            v_j_tiled = tf.tile(v_j, [1, 25*25*BATCH_SIZE, 1, 1])
+            v_j_tiled = tf.tile(v_j, [1, 26*26*BATCH_SIZE, 1, 1])
             u_produce_v = tf.matmul(u_hat, v_j_tiled, transpose_a=True)
             b_Ij += tf.reduce_sum(u_produce_v, axis=0, keep_dims=True)
             b_IJ = tf.concat([b_Il, b_Ij, b_Ir], axis=2)
 
         return(v_j, b_IJ)
 
-
 def train():
-    sess = tf.Session(config = config)
     random_dim = 100
     with tf.variable_scope('input'):
         real_image = tf.placeholder(tf.float32, shape = [None, HEIGHT, WIDTH, CHANNEL], name='real_image')
@@ -173,10 +174,10 @@ def train():
         pass
 
     fake_result = discriminator(fake_image, is_train, reuse=True)
-    d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=real_result, labels=tf.fill([BATCH_SIZE, 1], 1)))
-    d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=fake_result, labels=tf.zeros_like(fake_result)))
+    d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=real_result, labels=tf.fill([BATCH_SIZE, 1], np.float32(1))))
+    d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=fake_result, labels=tf.fill([BATCH_SIZE, 1], np.float32(0)))))
     d_loss = d_loss_real + d_loss_fake
-    g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=fake_result, labels = tf.ones_like(fake_result)))       
+    g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=fake_result, labels = tf.fill([BATCH_SIZE, 1], np.float32(1))))      
     t_vars = tf.trainable_variables()
     d_vars = [var for var in t_vars if 'dis' in var.name]
     g_vars = [var for var in t_vars if 'gen' in var.name]
