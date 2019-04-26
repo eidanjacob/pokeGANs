@@ -53,13 +53,11 @@ def process_data():
     print('6')
     images_iter = images_dataset.make_initializable_iterator()
     print('7')
-    with tf.Session() as sess:
-        sess.run(images_iter.initializer, feed_dict = None)
-        
-    print('8')
     next_batch = images_iter.get_next()
-    print('9')
-    return next_batch, len(image)
+    print('8')
+    init_op = images_iter.initializer
+    print('10')
+    return next_batch, len(image), init_op
 
 def generator(input, random_dim, is_train, reuse=False):
     c4, c8, c16, c32, c64 = 512, 256, 128, 64, 32 # channel num
@@ -212,7 +210,7 @@ def train():
     print('j')
     saver = tf.train.Saver()
     print('k')
-    image_batch, samples_num = process_data()
+    image_batch, samples_num, init_op = process_data()
     print('l')
     batch_num = int(samples_num / batch_size)
     # continue training
@@ -228,6 +226,7 @@ def train():
     print( 'batch size: %d, batch num per epoch: %d, epoch num: %d' % (batch_size, batch_num, EPOCH))
     print( 'start training...')
     for i in range(EPOCH):
+        print(sess.run(init_op))
         for j in range(batch_num):
             d_iters = 5
             g_iters = 1
