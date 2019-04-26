@@ -8,14 +8,13 @@ from utils import *
 
 slim = tf.contrib.slim
 HEIGHT, WIDTH, CHANNEL = 128, 128, 3
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 EPOCH = 5000
 os.environ['CUDA_VISIBLE_DEVICES'] = '15'
 version = 'newPokemon'
 newPoke_path = './' + version
-config = tf.ConfigProto(device_count={'GPU':0, 'CPU':8})
-config.intra_op_parallelism_threads = 8
-config.inter_op_parallelism_threads = 8
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
 
 def lrelu(x, n, leak=0.2): 
     return tf.maximum(x, leak * x, name=n) 
@@ -44,13 +43,13 @@ def process_data():
     image.set_shape([HEIGHT,WIDTH,CHANNEL])
     image = tf.cast(image, tf.float32)
     image = image / 255.0
-    images_dataset = tf.data.Dataset.from_tensors(image)
-    images_dataset = images_dataset.shuffle(buffer_size=2000)
-    images_dataset = images_dataset.batch(BATCH_SIZE, True)
-    images_iter = images_dataset.make_initializable_iterator()
-    sess.run(images_iter.initializer)
+    images_batch = tf.train.shuffle_batch(
+                                    [image], batch_size = BATCH_SIZE,
+                                    num_threads = 4, capacity = 5000,
+                                    min_after_dequeue = 1000,
+                                    allow_smaller_final_batch = True)
     num_images = len(images)
-    images_batch = images_iter.get_next()
+
     return images_batch, num_images
 
 def generator(input, random_dim, is_train, reuse=False):
@@ -122,8 +121,8 @@ class CapsConv(object):
             return(capsules)
             
         else:
-            input = tf.reshape(input, shape=(BATCH_SIZE, 507, 8, 1))
-            b_IJ = tf.zeros(shape=[1,507,32,1], dtype=np.float32)
+            input = tf.reshape(input, shape=(BATCH_SIZE, -1, 8,1))
+            b_IJ = tf.zeros(shape=[1,24336,32,1], dtype=np.float32)
             capsules = []
             for j in range(self.num_outputs):
                 with tf.variable_scope('caps_' + str(j)):
@@ -147,11 +146,11 @@ def discriminator(input, is_train, reuse=False):
 
         # Input shape is 128 x 128 x 3
         # After First Convolutional Layer: 60 x 60 x 128
-        conv1 = tf.layers.conv2d(input, 32, kernel_size = [9,9], strides = [2, 2], padding = 'VALID', 
+        conv1 = tf.layers.conv2d(input, 32, kernel_size = [11, 11], strides = [5, 5], padding = 'VALID', 
                                 kernel_initializer = tf.truncated_normal_initializer(stddev=0.02), name = 'conv1')
-         # Next Convolutional Layer: 26 x 26 x 256
-#        conv2 = tf.layers.conv2d(input, 256, kernel_size = [9, 9], strides = [2, 2], padding = 'VALID',
-#                                kernel_initializer = tf.truncated_normal_initializer(stddev=0.02), name = 'conv2')
+#         # Next Convolutional Layer: 26 x 26 x 256
+#         conv2 = tf.layers.conv2d(input, 64, kernel_size = [9, 9], strides = [2, 2], padding = 'VALID',
+#                                 kernel_initializer = tf.truncated_normal_initializer(stddev=0.02), name = 'conv2')
 
     
     # First capsule: 8 units per capsule, 9x9 feature map. Number of capsules = 32
@@ -160,22 +159,22 @@ def discriminator(input, is_train, reuse=False):
             scope.reuse_variables()
 
         primaryCaps = CapsConv(num_units = 8, with_routing = False)
-        caps1 = primaryCaps(conv1, num_outputs = 64, kernel_size = [9, 9], stride = 2, reuse = reuse)
+        caps1 = primaryCaps(conv1, num_outputs = 32, kernel_size = [9, 9], stride = 2, reuse = reuse)
 
     with tf.variable_scope('Secondary_Capsule'):
         if reuse:
             scope.reuse_variables()
 
         secondaryCaps = CapsConv(num_units = 16, with_routing = True)
-        caps2 = secondaryCaps(caps1, num_outputs = 32, reuse = reuse)
+        caps2 = secondaryCaps(caps1, num_outputs = 16, reuse = reuse)
 
     with tf.variable_scope('dis') as scope:
         if reuse:
             scope.reuse_variables()
         # Fully Connected Layers
-        d_w3 = tf.get_variable('d_w3', [32*16, 1024], initializer=tf.truncated_normal_initializer(stddev=0.02))
+        d_w3 = tf.get_variable('d_w3', [16*32, 1024], initializer=tf.truncated_normal_initializer(stddev=0.02))
         d_b3 = tf.get_variable('d_b3', [1024], initializer=tf.constant_initializer(0))
-        d3 = tf.reshape(caps2, [-1, 32*16])
+        d3 = tf.reshape(caps2, [-1, 16*32])
         d3 = tf.matmul(d3, d_w3) + d_b3
         d3 = tf.nn.relu(d3)
         d_w4 = tf.get_variable('d_w4', [1024, 1], initializer=tf.truncated_normal_initializer(stddev=0.02))
@@ -207,6 +206,7 @@ def train():
     d_clip = [v.assign(tf.clip_by_value(v, -0.01, 0.01)) for v in d_vars]
     batch_size = BATCH_SIZE
     sess.run(tf.global_variables_initializer())
+    sess.run(tf.local_variables_initializer())
     image_batch, samples_num = process_data()
     batch_num = int(samples_num / batch_size)
     total_batch = 0
@@ -223,25 +223,28 @@ def train():
     print( 'start training...')
     for i in range(EPOCH):
         for j in range(batch_num):
-            if(j == batch_num - 1):
-                next
-
             d_iters = 5
             g_iters = 1
             train_noise = np.random.uniform(-1.0, 1.0, size=[batch_size, random_dim]).astype(np.float32)
+            print("dis start")
             for k in range(d_iters):
                 train_image = sess.run(image_batch)
+                print("train_image done")
                 sess.run(d_clip)
+                print("sess.run done")
                 # Update the discriminator
-                print("dis")
                 _, dLoss = sess.run([trainer_d, d_loss],
                                     feed_dict={random_input: train_noise, real_image: train_image, is_train: True})
+                print("dis loop done")
+            print("dis end")
 
             # Update the generator
-            print("gen")
+            print("gen start")
             for k in range(g_iters):
                 _, gLoss = sess.run([trainer_g, g_loss],
                                     feed_dict={random_input: train_noise, is_train: True})
+                print("gen loop done")
+            print("gen end")
             
         # save check point every 50 epoch
         if i%50 == 0:
@@ -263,8 +266,11 @@ def train():
 
 def capsule(input, b_IJ, idx_j):
     with tf.variable_scope('routing'):
-        w_initializer = np.random.normal(size=[1, 507, 8, 16], scale=0.01)
+        w_initializer = np.random.normal(size=[1, 24336, 8, 16], scale=0.01)
         W_Ij = tf.Variable(w_initializer, dtype=tf.float32)
+        with tf.Session() as sess:
+            sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
 
         W_Ij = tf.tile(W_Ij, [BATCH_SIZE, 1, 1, 1])
         u_hat = tf.matmul(W_Ij, input, transpose_a=True)
@@ -278,7 +284,7 @@ def capsule(input, b_IJ, idx_j):
             s_j = tf.reduce_sum(tf.multiply(c_Ij, u_hat),
                                 axis=1, keepdims=True)
             v_j = squash(s_j)
-            v_j_tiled = tf.tile(v_j, [1, 507, 1, 1])
+            v_j_tiled = tf.tile(v_j, [1, 24336, 1, 1])
             u_produce_v = tf.matmul(u_hat, v_j_tiled, transpose_a=True)
             b_Ij += tf.reduce_sum(u_produce_v, axis=0, keepdims=True)
             b_IJ = tf.concat([b_Il, b_Ij, b_Ir], axis=2)
