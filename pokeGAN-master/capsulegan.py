@@ -53,7 +53,9 @@ def process_data():
     print('6')
     images_iter = images_dataset.make_initializable_iterator()
     print('7')
-    sess.run(images_iter.initializer, feed_dict = None)
+    with tf.Session() as sess:
+        sess.run(images_iter.initializer, feed_dict = None)
+        
     print('8')
     next_batch = images_iter.get_next()
     print('9')
