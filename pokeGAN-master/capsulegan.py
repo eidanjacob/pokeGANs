@@ -163,17 +163,23 @@ def capsule(input, b_IJ, idx_j):
 
 def train():
     random_dim = 100
+    print('a')
     with tf.variable_scope('input'):
         real_image = tf.placeholder(tf.float32, shape = [None, HEIGHT, WIDTH, CHANNEL], name='real_image')
+        print('b')
         random_input = tf.placeholder(tf.float32, shape=[None, random_dim], name='rand_input')
+        print('c')
         is_train = tf.placeholder(tf.bool, name='is_train')
     # wgan
     fake_image = generator(random_input, random_dim, is_train)
+    print('d')
     real_result = discriminator(real_image, is_train)
+    print('e')
     with tf.variable_scope(tf.get_variable_scope()) as scope:
         pass
 
     fake_result = discriminator(fake_image, is_train, reuse=True)
+    print('f')
     d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=real_result, labels=tf.fill([BATCH_SIZE, 1], np.float32(1))))
     d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=fake_result, labels=tf.fill([BATCH_SIZE, 1], np.float32(0))))
     d_loss = d_loss_real + d_loss_fake
@@ -182,20 +188,29 @@ def train():
     d_vars = [var for var in t_vars if 'dis' in var.name]
     g_vars = [var for var in t_vars if 'gen' in var.name]
     trainer_d = tf.train.RMSPropOptimizer(learning_rate=2e-4).minimize(d_loss, var_list=d_vars)
+    print('g')
     trainer_g = tf.train.RMSPropOptimizer(learning_rate=2e-4).minimize(g_loss, var_list=g_vars)
+    print('h')
+    
     # clip discriminator weights
     d_clip = [v.assign(tf.clip_by_value(v, -0.01, 0.01)) for v in d_vars]
     batch_size = BATCH_SIZE
+    print('i')
     sess.run(tf.global_variables_initializer())
+    print('j')
     saver = tf.train.Saver()
+    print('k')
     image_batch, samples_num = process_data()
+    print('l')
     batch_num = int(samples_num / batch_size)
     # continue training
     ckpt = tf.train.latest_checkpoint('./model/' + version)
     if(ckpt is not None):
+        print('ll')
         saver.restore(sess, ckpt)
 
     coord = tf.train.Coordinator()
+    print('m')
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
     print( 'total training sample num:%d' % samples_num)
     print( 'batch size: %d, batch num per epoch: %d, epoch num: %d' % (batch_size, batch_num, EPOCH))
