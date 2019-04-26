@@ -53,9 +53,10 @@ def process_data():
     print('6')
     images_iter = images_dataset.make_initializable_iterator()
     print('7')
-    sess.run(images_iter.initializer)
-    next_batch = images_iter.get_next()
+    sess.run(images_iter.initializer, None)
     print('8')
+    next_batch = images_iter.get_next()
+    print('9')
     return next_batch, len(image)
 
 def generator(input, random_dim, is_train, reuse=False):
