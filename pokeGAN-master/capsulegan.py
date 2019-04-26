@@ -175,7 +175,7 @@ def train():
 
     fake_result = discriminator(fake_image, is_train, reuse=True)
     d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=real_result, labels=tf.fill([BATCH_SIZE, 1], np.float32(1))))
-    d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=fake_result, labels=tf.fill([BATCH_SIZE, 1], np.float32(0)))))
+    d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=fake_result, labels=tf.fill([BATCH_SIZE, 1], np.float32(0))))
     d_loss = d_loss_real + d_loss_fake
     g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=fake_result, labels = tf.fill([BATCH_SIZE, 1], np.float32(1))))      
     t_vars = tf.trainable_variables()
