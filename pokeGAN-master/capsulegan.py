@@ -140,8 +140,8 @@ def capsule(input, b_IJ, idx_j):
         w_initializer = np.random.normal([1, 25*25*BATCH_SIZE, 8, 16], scale = 0.01)
         w_Ij = tf.Variable(w_initializer, dtype = tf.float32)
         sess.run(w_Ij.initializer)
-        W_Ij = tf.tile(W_Ij, [BATCH_SIZE, 1, 1, 1])
-        u_hat = tf.matmul(W_Ij, caps1, transpose_a = True)
+        w_Ij = tf.tile(w_Ij, [BATCH_SIZE, 1, 1, 1])
+        u_hat = tf.matmul(w_Ij, input, transpose_a = True)
         shape = b_IJ.get_shape().as_list()
         size_splits = [idx_j, 1, shape[2] - idx_j - 1]
         for routing_iteration in range(3):
