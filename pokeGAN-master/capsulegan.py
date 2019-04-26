@@ -23,28 +23,34 @@ def squash(vector):
     return(vec_squashed)
 
 def process_data():
+    print('1')
     current_dir = os.getcwd()
     pokemon_dir = os.path.join(current_dir, 'resized_black')
     images = []
+    print('2')
     for each in os.listdir(pokemon_dir):
         images.append(os.path.join(pokemon_dir, each))
 
     all_images = tf.convert_to_tensor(images, dtype = tf.string)
     images_queue = tf.train.slice_input_producer([all_images])
+    print('3')
     content = tf.read_file(images_queue[0])
     sess = tf.Session()
     image = tf.image.decode_jpeg(content, channels = CHANNEL)
     image = tf.image.random_flip_left_right(image)
     image = tf.image.random_brightness(image, max_delta = 0.1)
+    print('4')
     image = tf.image.random_contrast(image, lower = 0.9, upper = 1.1)
     size = [HEIGHT, WIDTH]
     image = tf.image.resize_images(image, size)
     image.set_shape([HEIGHT,WIDTH,CHANNEL])
+    print('5')
     image = tf.cast(image, tf.float32)
     image = image / 255.0
     images_dataset = tf.data.Dataset.from_tensor_slices(image)
     images_dataset = images_dataset.shuffle(2000, reshuffle_each_iteration = True)
     images_dataset = images_dataset.batch(BATCH_SIZE, drop_remainder = True)
+    print('6')
     images_iter = images_dataset.make_initializable_iterator()
     sess.run(images_iter.initializer)
     return images_dataset, len(image)
