@@ -13,6 +13,8 @@ EPOCH = 5000
 os.environ['CUDA_VISIBLE_DEVICES'] = '15'
 version = 'newPokemon'
 newPoke_path = './' + version
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
 
 def lrelu(x, n, leak=0.2): 
     return tf.maximum(x, leak * x, name=n) 
@@ -44,7 +46,8 @@ def process_data():
     images_batch = tf.train.shuffle_batch(
                                     [image], batch_size = BATCH_SIZE,
                                     num_threads = 4, capacity = 5000,
-                                    min_after_dequeue = 1000)
+                                    min_after_dequeue = 1000,
+                                    allow_smaller_final_batch = True)
     num_images = len(images)
 
     return images_batch, num_images
@@ -143,11 +146,11 @@ def discriminator(input, is_train, reuse=False):
 
         # Input shape is 128 x 128 x 3
         # After First Convolutional Layer: 60 x 60 x 128
-        conv1 = tf.layers.conv2d(input, 128, kernel_size = [9, 9], strides = [2, 2], padding = 'VALID', 
+        conv1 = tf.layers.conv2d(input, 32, kernel_size = [11, 11], strides = [5, 5], padding = 'VALID', 
                                 kernel_initializer = tf.truncated_normal_initializer(stddev=0.02), name = 'conv1')
-        # Next Convolutional Layer: 26 x 26 x 256
-        conv2 = tf.layers.conv2d(input, 256, kernel_size = [9, 9], strides = [2, 2], padding = 'VALID',
-                                kernel_initializer = tf.truncated_normal_initializer(stddev=0.02), name = 'conv2')
+#         # Next Convolutional Layer: 26 x 26 x 256
+#         conv2 = tf.layers.conv2d(input, 64, kernel_size = [9, 9], strides = [2, 2], padding = 'VALID',
+#                                 kernel_initializer = tf.truncated_normal_initializer(stddev=0.02), name = 'conv2')
 
     
     # First capsule: 8 units per capsule, 9x9 feature map. Number of capsules = 32
@@ -156,14 +159,14 @@ def discriminator(input, is_train, reuse=False):
             scope.reuse_variables()
 
         primaryCaps = CapsConv(num_units = 8, with_routing = False)
-        caps1 = primaryCaps(conv2, num_outputs = 32 * 9, kernel_size = [9, 9], stride = 2, reuse = reuse)
+        caps1 = primaryCaps(conv1, num_outputs = 32, kernel_size = [9, 9], stride = 2, reuse = reuse)
 
     with tf.variable_scope('Secondary_Capsule'):
         if reuse:
             scope.reuse_variables()
 
         secondaryCaps = CapsConv(num_units = 16, with_routing = True)
-        caps2 = secondaryCaps(caps1, num_outputs = 32, reuse = reuse)
+        caps2 = secondaryCaps(caps1, num_outputs = 16, reuse = reuse)
 
     with tf.variable_scope('dis') as scope:
         if reuse:
@@ -181,7 +184,7 @@ def discriminator(input, is_train, reuse=False):
     return d4
 
 def train():
-    sess = tf.Session()
+    sess = tf.Session(config = config)
     random_dim = 100
     with tf.variable_scope('input'):
         real_image = tf.placeholder(tf.float32, shape = [None, HEIGHT, WIDTH, CHANNEL], name='real_image')
@@ -223,17 +226,25 @@ def train():
             d_iters = 5
             g_iters = 1
             train_noise = np.random.uniform(-1.0, 1.0, size=[batch_size, random_dim]).astype(np.float32)
+            print("dis start")
             for k in range(d_iters):
                 train_image = sess.run(image_batch)
+                print("train_image done")
                 sess.run(d_clip)
+                print("sess.run done")
                 # Update the discriminator
                 _, dLoss = sess.run([trainer_d, d_loss],
                                     feed_dict={random_input: train_noise, real_image: train_image, is_train: True})
+                print("dis loop done")
+            print("dis end")
 
             # Update the generator
+            print("gen start")
             for k in range(g_iters):
                 _, gLoss = sess.run([trainer_g, g_loss],
                                     feed_dict={random_input: train_noise, is_train: True})
+                print("gen loop done")
+            print("gen end")
             
         # save check point every 50 epoch
         if i%50 == 0:
@@ -259,22 +270,23 @@ def capsule(input, b_IJ, idx_j):
         W_Ij = tf.Variable(w_initializer, dtype=tf.float32)
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
+            sess.run(tf.local_variables_initializer())
 
         W_Ij = tf.tile(W_Ij, [BATCH_SIZE, 1, 1, 1])
         u_hat = tf.matmul(W_Ij, input, transpose_a=True)
         shape = b_IJ.get_shape().as_list()
         size_splits = [idx_j, 1, shape[2] - idx_j - 1]
         for r_iter in range(3):
-            c_IJ = tf.nn.softmax(b_IJ, dim=2)
+            c_IJ = tf.nn.softmax(b_IJ, axis=2)
             b_Il, b_Ij, b_Ir = tf.split(b_IJ, size_splits, axis=2)
             c_Il, c_Ij, b_Ir = tf.split(c_IJ, size_splits, axis=2)
             s_j = tf.multiply(c_Ij, u_hat)
             s_j = tf.reduce_sum(tf.multiply(c_Ij, u_hat),
-                                axis=1, keep_dims=True)
+                                axis=1, keepdims=True)
             v_j = squash(s_j)
             v_j_tiled = tf.tile(v_j, [1, 24336, 1, 1])
             u_produce_v = tf.matmul(u_hat, v_j_tiled, transpose_a=True)
-            b_Ij += tf.reduce_sum(u_produce_v, axis=0, keep_dims=True)
+            b_Ij += tf.reduce_sum(u_produce_v, axis=0, keepdims=True)
             b_IJ = tf.concat([b_Il, b_Ij, b_Ir], axis=2)
 
         return(v_j, b_IJ)
