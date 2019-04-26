@@ -31,7 +31,8 @@ def process_data():
     for each in os.listdir(pokemon_dir):
         images.append(os.path.join(pokemon_dir, each))
 
-    all_images = tf.convert_to_tensor(images, dtype = tf.string)
+    all_images = tf.image.decode_image(images)
+    print(all_images.shape)
     images_queue = tf.train.slice_input_producer([all_images])
     print('3')
     content = tf.read_file(images_queue[0])
@@ -40,12 +41,14 @@ def process_data():
     image = tf.image.random_flip_left_right(image) 
     image = tf.image.random_brightness(image, max_delta = 0.1)
     print('4')
+    print(image.shape)
     image = tf.image.random_contrast(image, lower = 0.9, upper = 1.1)
-    size = [HEIGHT, WIDTH]
+    size = (HEIGHT, WIDTH)
     image = tf.image.resize_images(image, size)
     image.set_shape([HEIGHT,WIDTH,CHANNEL])
     print('5')
     image = tf.cast(image, tf.float32)
+    print(image.shape)
     image = image / 255.0
     images_dataset = tf.data.Dataset.from_tensor_slices(image)
     images_dataset = images_dataset.shuffle(2000, reshuffle_each_iteration = True)
@@ -234,7 +237,7 @@ def train():
             print("dis start")
             for k in range(d_iters):
                 train_image = sess.run(image_batch)
-                print("train_image done")
+                print("train_image done", train_image.shape)
                 sess.run(d_clip)
                 print("sess.run done")
                 # Update the discriminator
