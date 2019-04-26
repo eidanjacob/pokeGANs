@@ -105,13 +105,13 @@ def discriminator(input, is_train, reuse=False):
         # Convolution: knumber ksize x ksize features
         c1knumber = 256
         c1ksize = 9
-        conv1 = tf.layers.conv2d(input, c1knumber, kernel_size = [c1ksize, c1ksize, 3], strides = [2,2], reuse = reuse, padding = 'VALID', activation_fn = lrelu, name = 'conv1')
+        conv1 = tf.layers.conv2d(input, c1knumber, kernel_size = [c1ksize, c1ksize, 3], strides = [2,2], reuse = reuse, padding = 'VALID', activation = lrelu, name = 'conv1')
 
         # Primary Capsule Layer
         caps1number = 32
         caps1dim = 8
         caps1size = 9
-        caps1 = tf.layers.conv2d(conv1, caps1number*caps1dim, kernel_size = [caps1size, caps1size, 256], strides = [2,2], reuse = reuse, padding = 'VALID', activation_fn = lrelu, name = 'caps1')
+        caps1 = tf.layers.conv2d(conv1, caps1number*caps1dim, kernel_size = [caps1size, caps1size, 256], strides = [2,2], reuse = reuse, padding = 'VALID', activation = lrelu, name = 'caps1')
         caps1 = tf.reshape(caps1, shape = [BATCH_SIZE, 25*25*caps1number, 8, 1])
         caps1 = squash(caps1)
 
