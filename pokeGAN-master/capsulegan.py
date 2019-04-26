@@ -30,7 +30,7 @@ def process_data():
         images.append(os.path.join(pokemon_dir, each))
 
     all_images = tf.convert_to_tensor(images, dtype = tf.string)
-    images_queue = tf.train.slice_input_produce([all_images])
+    images_queue = tf.train.slice_input_producer([all_images])
     content = tf.read_file(images_queue[0])
     sess = tf.Session()
     image = tf.image.decode_jpeg(content, channels = CHANNEL)
