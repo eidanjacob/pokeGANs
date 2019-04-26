@@ -51,8 +51,8 @@ def process_data():
     images_dataset = images_dataset.shuffle(2000, reshuffle_each_iteration = True)
     images_dataset = images_dataset.batch(BATCH_SIZE, drop_remainder = True)
     print('6')
-    images_iter = images_dataset.make_initializable_iterator()
-    sess.run(images_iter.initializer)
+    images_iter = images_dataset.make_one_shot_iterator()
+    print('7')
     return images_dataset, len(image)
 
 def generator(input, random_dim, is_train, reuse=False):
