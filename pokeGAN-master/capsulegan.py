@@ -256,7 +256,7 @@ def train():
 
             print("gen end")
         # save check point every 50 epoch
-        if i%50 == 0:
+        if i%5 == 0:
             if not os.path.exists('./model/' + version):
                 os.makedirs('./model/' + version)
             saver.save(sess, './model/' +version + '/' + str(i))
