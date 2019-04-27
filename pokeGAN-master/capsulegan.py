@@ -13,6 +13,8 @@ config.intra_op_parallelism_threads = 8
 config.inter_op_parallelism_threads = 8
 sess = tf.Session(config = config)
 
+print(os.getcwd())
+
 def lrelu(x, leak = 0.2):
     return tf.maximum(x, leak*x)
 
@@ -29,7 +31,9 @@ def process_data():
     images = []
     print('2')
     for each in os.listdir(pokemon_dir):
+        print(os.path.join(pokemon_dir, each))
         images.append(os.path.join(pokemon_dir, each))
+    
     all_images = tf.convert_to_tensor(images, dtype = tf.string)
     images_queue = tf.train.slice_input_producer([all_images])
     print('3')
@@ -210,7 +214,7 @@ def train():
     print('j')
     saver = tf.train.Saver()
     print('k')
-    image_batch, samples_num, init_op = process_data()
+    image_batch, samples_num, init_op = process_data()    
     print('l')
     batch_num = int(samples_num / batch_size)
     # continue training
