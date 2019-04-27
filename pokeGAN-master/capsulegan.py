@@ -232,9 +232,11 @@ def train():
     print( 'start training...')
     for i in range(EPOCH):
         sess.run(init_op)
+        print('sess init_op done')
         for j in range(batch_num):
             d_iters = 3
             g_iters = 1
+            print('iters defined')
             train_noise = np.random.uniform(-1.0, 1.0, size=[batch_size, random_dim]).astype(np.float32)
             print("dis start", str(i), str(j))
             train_image = sess.run(image_batch)
