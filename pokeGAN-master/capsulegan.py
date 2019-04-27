@@ -53,6 +53,7 @@ def process_data():
     print(image.shape)
     images_dataset = tf.data.Dataset.from_tensors(image)
     images_dataset = images_dataset.shuffle(2000, reshuffle_each_iteration = True)
+    images_dataset = images_dataset.repeat(EPOCH)
     images_dataset = images_dataset.batch(BATCH_SIZE, drop_remainder = True)
     print('6')
     images_iter = images_dataset.make_initializable_iterator()
@@ -230,7 +231,7 @@ def train():
     print( 'batch size: %d, batch num per epoch: %d, epoch num: %d' % (batch_size, batch_num, EPOCH))
     print( 'start training...')
     for i in range(EPOCH):
-        print(sess.run(init_op))
+        sess.run(init_op)
         for j in range(batch_num):
             d_iters = 3
             g_iters = 1
