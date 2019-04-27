@@ -30,27 +30,24 @@ def process_data():
     print('2')
     for each in os.listdir(pokemon_dir):
         images.append(os.path.join(pokemon_dir, each))
-
-    all_images = tf.image.decode_image(images)
-    print(all_images.shape)
+    all_images = tf.convert_to_tensor(images, dtype = tf.string)
     images_queue = tf.train.slice_input_producer([all_images])
     print('3')
     content = tf.read_file(images_queue[0])
-    sess = tf.Session()
+    # sess = tf.Session()
     image = tf.image.decode_jpeg(content, channels = CHANNEL)
     image = tf.image.random_flip_left_right(image) 
     image = tf.image.random_brightness(image, max_delta = 0.1)
     print('4')
-    print(image.shape)
     image = tf.image.random_contrast(image, lower = 0.9, upper = 1.1)
-    size = (HEIGHT, WIDTH)
+    size = [HEIGHT, WIDTH]
     image = tf.image.resize_images(image, size)
     image.set_shape([HEIGHT,WIDTH,CHANNEL])
     print('5')
     image = tf.cast(image, tf.float32)
-    print(image.shape)
     image = image / 255.0
-    images_dataset = tf.data.Dataset.from_tensor_slices(image)
+    print(image.shape)
+    images_dataset = tf.data.Dataset.from_tensors(image)
     images_dataset = images_dataset.shuffle(2000, reshuffle_each_iteration = True)
     images_dataset = images_dataset.batch(BATCH_SIZE, drop_remainder = True)
     print('6')
@@ -231,20 +228,19 @@ def train():
     for i in range(EPOCH):
         print(sess.run(init_op))
         for j in range(batch_num):
-            d_iters = 5
+            d_iters = 3
             g_iters = 1
             train_noise = np.random.uniform(-1.0, 1.0, size=[batch_size, random_dim]).astype(np.float32)
-            print("dis start")
+            print("dis start", str(i), str(j))
+            train_image = sess.run(image_batch)
+            print('loop', str(i), str(j))
             for k in range(d_iters):
-                train_image = sess.run(image_batch)
-                print("train_image done", train_image.shape)
                 sess.run(d_clip)
-                print("sess.run done")
+                print("sess.run d clip")
                 # Update the discriminator
                 _, dLoss = sess.run([trainer_d, d_loss],
                                     feed_dict={random_input: train_noise, real_image: train_image, is_train: True})
-                print("dis loop done")
-
+                
             print("dis end")
             # Update the generator
             print("gen start")
